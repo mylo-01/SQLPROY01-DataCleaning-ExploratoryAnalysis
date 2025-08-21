@@ -1,143 +1,58 @@
-Layoffs Data Cleaning Project
-Project Overview
-This project focuses on cleaning and preparing a dataset on company layoffs. The main goal is to ensure the data is accurate, consistent, and ready for analysis by performing standard data cleaning steps.
 
-Dataset
-Source: Provided by Alex the Analyst
+# Layoffs Data Cleaning Project
 
-Original Table: layoffs
+## Project Overview
+This project involved a comprehensive data cleaning process for a company layoffs dataset. The goal was to transform raw, unstructured data into a clean, analysis-ready dataset through systematic data cleaning techniques.
 
-Working Tables: layoffs_staging, layoffs_staging2
+## Data Source
+The dataset was originally provided by Alex the Analyst, focusing on company layoff information across various industries and geographic locations.
 
-Data Cleaning Steps
-1. Create Staging Table
-Created a copy of the original table to preserve raw data:
+## Data Cleaning Process
 
-sql
-CREATE TABLE layoffs_staging LIKE layoffs;
-INSERT INTO layoffs_staging SELECT * FROM layoffs;
-2. Remove Duplicates
-Identified and removed duplicate records using window functions:
+### Initial Setup
+Created staging tables to preserve the original data integrity while performing cleaning operations, ensuring the raw data remained untouched throughout the process.
 
-sql
-WITH duplicate_cte AS (
-  SELECT *, 
-    ROW_NUMBER() OVER(
-      PARTITION BY company, location, industry, total_laid_off, 
-      percentage_laid_off, date, stage, funds_raised_millions
-    ) AS row_num
-  FROM layoffs_staging
-)
-DELETE FROM layoffs_staging2 WHERE row_num > 1;
-3. Standardize Data
-Performed data standardization including trimming whitespace, standardizing values, and formatting:
+### Duplicate Removal
+Implemented an advanced duplicate identification system using window functions to detect and eliminate exact duplicate records across all relevant columns including company details, layoff statistics, and financial information.
 
-sql
-UPDATE layoffs_staging2 SET company = TRIM(company);
-UPDATE layoffs_staging2 SET industry = 'Crypto' WHERE industry LIKE 'crypto%';
-UPDATE layoffs_staging2 SET country = TRIM(TRAILING '.' FROM country) 
-WHERE country LIKE 'United States%';
-ALTER TABLE layoffs_staging2 MODIFY COLUMN date DATE;
-4. Handle Null and Blank Values
-Addressed missing data through imputation and removal:
+### Data Standardization
+- Performed comprehensive text cleaning by trimming whitespace from all string fields
+- Standardized industry classifications by consolidating variations (e.g., all crypto-related entries to "Crypto")
+- Cleaned geographic data by removing trailing punctuation from country names
+- Converted date fields to proper DATE format for temporal analysis
 
-sql
-UPDATE layoffs_staging2 AS t1
-JOIN layoffs_staging2 AS t2
-ON t1.company = t2.company
-SET t1.industry = t2.industry
-WHERE t1.industry IS NULL AND t2.industry IS NOT NULL;
+### Missing Value Handling
+- Developed a self-join strategy to intelligently impute missing industry data using existing company information
+- Removed records with incomplete essential data where both layoff metrics were missing
+- Maintained data quality by preserving records with partial information when possible
 
-DELETE FROM layoffs_staging2 
-WHERE total_laid_off IS NULL AND percentage_laid_off IS NULL;
-5. Final Cleanup
-Performed final table modifications:
+### Structural Improvements
+- Removed temporary columns used during the cleaning process
+- Renamed fields for better clarity and consistency throughout the dataset
 
-sql
-ALTER TABLE layoffs_staging2 DROP COLUMN row_num;
-ALTER TABLE layoffs_staging2 CHANGE `date` dates DATE;
-Exploratory Data Analysis
-Initial Data Exploration
-sql
-SELECT * FROM layoffs_staging2;
+## Exploratory Data Analysis
+Conducted comprehensive analysis including:
+- Identification of maximum layoff values and percentages
+- Analysis of companies that experienced complete layoffs (100%)
+- Aggregate layoff statistics by company, industry, and country
+- Temporal analysis across years and months
+- Rolling sum calculations to track layoff trends over time
+- Ranking of top companies by layoff numbers annually
 
-SELECT MAX(total_laid_off), MAX(percentage_laid_off)
-FROM layoffs_staging2;
-Companies with Complete Layoffs
-sql
-SELECT *
-FROM layoffs_staging2
-WHERE percentage_laid_off = 1
-ORDER BY funds_raised_millions DESC;
-Layoffs by Company
-sql
-SELECT company, SUM(total_laid_off)
-FROM layoffs_staging2
-GROUP BY company
-ORDER BY 2 DESC;
-Date Range Analysis
-sql
-SELECT MIN(dates), MAX(dates)
-FROM layoffs_staging2;
-Industry Analysis
-sql
-SELECT industry, SUM(total_laid_off)
-FROM layoffs_staging2
-GROUP BY industry
-ORDER BY 2 DESC;
-Country Analysis
-sql
-SELECT country, SUM(total_laid_off)
-FROM layoffs_staging2
-GROUP BY country
-ORDER BY 2 DESC;
+## Key Achievements
+- Transformed raw data into a clean, analysis-ready dataset
+- Implemented reproducible cleaning procedures using SQL
+- Maintained data integrity throughout the cleaning process
+- Created foundation for robust data analysis and visualization
+- Established patterns and trends in company layoffs across multiple dimensions
 
-SELECT country, YEAR(dates), SUM(total_laid_off)
-FROM layoffs_staging2
-GROUP BY country, YEAR(dates)
-ORDER BY 3 DESC;
-Monthly Trends
-sql
-SELECT SUBSTRING(dates, 1, 7) AS months, SUM(total_laid_off)
-FROM layoffs_staging2
-WHERE SUBSTRING(dates, 1, 7) IS NOT NULL
-GROUP BY months
-ORDER BY months DESC;
-Rolling Total Calculation
-sql
-WITH rolling_totalt AS (
-  SELECT SUBSTRING(dates, 1, 7) AS months, SUM(total_laid_off) AS total_off
-  FROM layoffs_staging2
-  WHERE SUBSTRING(dates, 1, 7) IS NOT NULL
-  GROUP BY months
-  ORDER BY months
-)
-SELECT months, total_off,
-  SUM(total_off) OVER(ORDER BY months) AS rolling_total
-FROM rolling_totalt;
-Yearly Company Analysis
-sql
-SELECT company, YEAR(dates) AS years, total_laid_off
-FROM layoffs_staging2
-ORDER BY company, YEAR(dates);
-Top 5 Companies by Layoffs Each Year
-sql
-WITH company_yearly_layoffs AS (
-  SELECT company, YEAR(dates) AS years, total_laid_off
-  FROM layoffs_staging2
-  ORDER BY company, YEAR(dates)
-), company_year_rank AS (
-  SELECT *, RANK() OVER(PARTITION BY years ORDER BY total_laid_off DESC) AS ranking
-  FROM company_yearly_layoffs
-  WHERE years IS NOT NULL
-)
-SELECT * 
-FROM company_year_rank
-WHERE ranking <= 5
-ORDER BY ranking, years;
-Final Output
-Cleaned Table: layoffs_staging2
+## Final Output
+The project resulted in a fully cleaned dataset featuring:
+- Zero duplicate records
+- Standardized values across all categorical fields
+- Proper data types and formatting
+- Comprehensive handling of missing values
+- Consistent naming conventions and structure
 
-Status: Data is clean, consistent, and ready for analysis
+The cleaned dataset is now optimized for in-depth analysis, visualization, and reporting on company layoff trends and patterns.
 
-Features: No duplicates, standardized values, proper data types, and handled missing values
